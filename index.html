@@ -192,12 +192,72 @@ select option { background: var(--surf); }
 .footer-links a:hover { color: var(--teal-lt); }
 .footer-copy { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 1px; margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border); }
 
+/* ── How It Works ── */
+#how-it-works { background: var(--bg); border-bottom: 1px solid var(--border); }
+.hiw-intro { text-align: center; max-width: 600px; margin: 0 auto 56px; }
+.hiw-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; max-width: 960px; margin: 0 auto; }
+.hiw-step { text-align: center; position: relative; }
+.hiw-step-num { font-family: var(--mono); font-size: 10px; letter-spacing: 3px; color: var(--dim); margin-bottom: 20px; }
+.hiw-anim { width: 180px; height: 220px; margin: 0 auto 24px; position: relative; overflow: hidden; }
+.hiw-step-title { font-family: var(--display); font-size: 1.2rem; font-weight: 700; color: var(--white); margin-bottom: 10px; }
+.hiw-step-desc { font-size: 0.95rem; color: var(--dim); line-height: 1.6; }
+
+/* Animation 1: Probe drop */
+.anim-bore { position: absolute; left: 50%; width: 2px; height: 180px; background: linear-gradient(to bottom, var(--dim) 0%, transparent 100%); transform: translateX(-50%); top: 20px; }
+.anim-bore::before { content: ''; position: absolute; top: -4px; left: -8px; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--dim); background: transparent; }
+.anim-probe { position: absolute; left: 50%; transform: translateX(-50%); width: 10px; height: 28px; background: var(--teal-lt); border-radius: 2px 2px 5px 5px; top: 10px; animation: probeDrop 3s ease-in-out infinite; }
+.anim-probe::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--teal-lt); }
+.anim-cable { position: absolute; left: 50%; width: 1px; background: var(--teal-lt); opacity: 0.4; transform: translateX(-50%); top: 0; height: 10px; animation: cableGrow 3s ease-in-out infinite; }
+@keyframes probeDrop { 0%{top:10px} 50%{top:160px} 100%{top:10px} }
+@keyframes cableGrow { 0%{height:10px} 50%{height:160px} 100%{height:10px} }
+.anim-depth-marks { position: absolute; right: 20px; top: 20px; font-family: var(--mono); font-size: 8px; color: var(--dim); }
+.anim-depth-marks span { display: block; height: 36px; opacity: 0; animation: markFade 3s ease infinite; }
+.anim-depth-marks span:nth-child(1) { animation-delay: 0s; }
+.anim-depth-marks span:nth-child(2) { animation-delay: 0.5s; }
+.anim-depth-marks span:nth-child(3) { animation-delay: 1.0s; }
+.anim-depth-marks span:nth-child(4) { animation-delay: 1.5s; }
+.anim-depth-marks span:nth-child(5) { animation-delay: 2.0s; }
+@keyframes markFade { 0%{opacity:0} 25%{opacity:1} 75%{opacity:1} 100%{opacity:0} }
+
+/* Animation 2: Data stream */
+.anim-stream { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.anim-stream-row { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; opacity: 0; animation: streamIn 2.4s ease infinite; white-space: nowrap; }
+.anim-stream-row:nth-child(1) { color: var(--teal-lt); animation-delay: 0s; }
+.anim-stream-row:nth-child(2) { color: var(--text); animation-delay: 0.3s; }
+.anim-stream-row:nth-child(3) { color: var(--text); animation-delay: 0.6s; }
+.anim-stream-row:nth-child(4) { color: var(--teal-lt); animation-delay: 0.9s; }
+.anim-stream-row:nth-child(5) { color: var(--text); animation-delay: 1.2s; }
+.anim-stream-row:nth-child(6) { color: var(--text); animation-delay: 1.5s; }
+.anim-stream-row:nth-child(7) { color: #f59e0b; animation-delay: 1.8s; }
+.anim-stream-row:nth-child(8) { color: var(--text); animation-delay: 2.1s; }
+@keyframes streamIn { 0%{opacity:0;transform:translateY(8px)} 15%{opacity:1;transform:none} 85%{opacity:1;transform:none} 100%{opacity:0;transform:translateY(-8px)} }
+
+/* Animation 3: Report card */
+.anim-report { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 140px; background: var(--white); border-radius: 4px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.3); animation: reportPulse 4s ease infinite; }
+.anim-rpt-head { background: var(--teal-lt); padding: 8px 12px; }
+.anim-rpt-head-text { font-family: var(--mono); font-size: 6px; letter-spacing: 1.5px; color: #030a10; font-weight: 700; }
+.anim-rpt-body { padding: 10px 12px; }
+.anim-rpt-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #eee; }
+.anim-rpt-row:last-child { border-bottom: none; }
+.anim-rpt-label { font-family: var(--mono); font-size: 7px; color: #999; letter-spacing: 0.5px; }
+.anim-rpt-val { font-family: var(--mono); font-size: 8px; color: #1a2840; font-weight: 600; }
+.anim-badge { font-size: 6px; padding: 2px 5px; border-radius: 1px; font-family: var(--mono); letter-spacing: 0.5px; font-weight: 700; }
+.anim-badge.pass { background: #e0f2f1; color: #00695c; }
+.anim-badge.warn { background: #fef3c7; color: #92400e; }
+.anim-badge.flag { background: #fee2e2; color: #991b1b; }
+@keyframes reportPulse { 0%{transform:translate(-50%,-50%) scale(0.92);opacity:0.5} 20%{transform:translate(-50%,-50%) scale(1);opacity:1} 80%{transform:translate(-50%,-50%) scale(1);opacity:1} 100%{transform:translate(-50%,-50%) scale(0.92);opacity:0.5} }
+
+/* Connector arrows between steps */
+.hiw-arrow { position: absolute; top: 130px; right: -28px; font-size: 20px; color: var(--dim); opacity: 0.4; }
+
 /* ── Reveal ── */
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
 .reveal.visible { opacity: 1; transform: none; }
 
 /* ── Responsive ── */
 @media (max-width: 960px) {
+  .hiw-steps { grid-template-columns: 1fr; gap: 40px; }
+  .hiw-arrow { display: none; }
   .cards { grid-template-columns: 1fr; gap: 16px; }
   .report-grid { grid-template-columns: 1fr; gap: 40px; }
   .stats-grid { grid-template-columns: 1fr; }
@@ -243,7 +303,7 @@ select option { background: var(--surf); }
       verification.<br>
       Until now.
     </h1>
-    <p class="hero-body">Geothermal borefields are designed with precision — and installed on faith. BoreLogger gives you documented proof of what was actually drilled.</p>
+    <p class="hero-body">BoreLogger gives you documented proof of what was actually drilled.</p>
     <div class="hero-actions">
       <a href="#waitlist" class="btn btn-primary">&#x25b6;&nbsp; Join Early Access</a>
       <a href="report.html" target="_blank" class="btn btn-ghost">&#x2193;&nbsp; See Sample Report</a>
@@ -269,6 +329,77 @@ select option { background: var(--surf); }
     </div>
   </div>
 </div>
+
+<!-- How It Works — dark -->
+<section id="how-it-works">
+  <div class="container">
+    <div class="hiw-intro reveal">
+      <span class="dark-label">How It Works</span>
+      <h2 class="dark-title">Three steps. One survey run.</h2>
+      <p style="color:var(--dim);font-size:1rem;">Deploy, log, report — that's it.</p>
+    </div>
+    <div class="hiw-steps">
+
+      <div class="hiw-step reveal">
+        <div class="hiw-step-num">STEP 01</div>
+        <div class="hiw-anim">
+          <div class="anim-bore"></div>
+          <div class="anim-cable"></div>
+          <div class="anim-probe"></div>
+          <div class="anim-depth-marks">
+            <span>0 ft</span>
+            <span>100 ft</span>
+            <span>200 ft</span>
+            <span>350 ft</span>
+            <span>470 ft</span>
+          </div>
+        </div>
+        <div class="hiw-step-title">Deploy the Probe</div>
+        <div class="hiw-step-desc">Lower the BoreLogger probe on a standard wireline. It logs inclination, azimuth, and depth continuously as it descends.</div>
+        <span class="hiw-arrow">&#x2192;</span>
+      </div>
+
+      <div class="hiw-step reveal">
+        <div class="hiw-step-num">STEP 02</div>
+        <div class="hiw-anim">
+          <div class="anim-stream">
+            <div class="anim-stream-row">DEPTH  124 ft</div>
+            <div class="anim-stream-row">INC    1.2&deg;</div>
+            <div class="anim-stream-row">AZI    045&deg;</div>
+            <div class="anim-stream-row">DEPTH  248 ft</div>
+            <div class="anim-stream-row">INC    2.1&deg;</div>
+            <div class="anim-stream-row">AZI    048&deg;</div>
+            <div class="anim-stream-row">INC    3.8&deg; WARN</div>
+            <div class="anim-stream-row">AZI    315&deg;</div>
+          </div>
+        </div>
+        <div class="hiw-step-title">Stream Real-Time Data</div>
+        <div class="hiw-step-desc">Live deviation data streams to the surface. See trajectory, inclination, and heading build in real time.</div>
+        <span class="hiw-arrow">&#x2192;</span>
+      </div>
+
+      <div class="hiw-step reveal">
+        <div class="hiw-step-num">STEP 03</div>
+        <div class="hiw-anim">
+          <div class="anim-report">
+            <div class="anim-rpt-head"><div class="anim-rpt-head-text">VERIFICATION REPORT</div></div>
+            <div class="anim-rpt-body">
+              <div class="anim-rpt-row"><span class="anim-rpt-label">BH-01</span><span class="anim-badge pass">PASS</span></div>
+              <div class="anim-rpt-row"><span class="anim-rpt-label">BH-05</span><span class="anim-badge warn">WARN</span></div>
+              <div class="anim-rpt-row"><span class="anim-rpt-label">BH-06</span><span class="anim-badge pass">PASS</span></div>
+              <div class="anim-rpt-row"><span class="anim-rpt-label">BH-10</span><span class="anim-badge flag">FLAG</span></div>
+              <div class="anim-rpt-row"><span class="anim-rpt-label">BH-11</span><span class="anim-badge pass">PASS</span></div>
+              <div class="anim-rpt-row"><span class="anim-rpt-label">TOTAL</span><span class="anim-rpt-val">19/24</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="hiw-step-title">Get Your Report</div>
+        <div class="hiw-step-desc">An automated verification report with per-bore status, trajectory plots, and pass/warn/flag classification.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
 
 <!-- Audiences — LIGHT -->
 <section id="audiences">
