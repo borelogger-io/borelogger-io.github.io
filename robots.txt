@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://borelogger.io/sitemap.xml
