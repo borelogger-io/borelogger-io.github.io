@@ -900,12 +900,12 @@ function statusColor(s) { return s==='pass'?'#00d4aa':s==='warn'?'#f59e0b':'#ef4
       };
       const geoChecked = document.getElementById('interest_geo').checked;
       const conChecked = document.getElementById('interest_consult').checked;
-      if (geoChecked) payload.interest_geological = true;
+      if (geoChecked) payload.insert_geological = true;
       if (conChecked) payload.interest_consulting = true;
       let { error } = await sb.from('demo_requests').insert(payload);
       // If checkbox columns don't exist yet, retry without them
       if (error && (geoChecked || conChecked)) {
-        delete payload.interest_geological;
+        delete payload.insert_geological;
         delete payload.interest_consulting;
         ({ error } = await sb.from('demo_requests').insert(payload));
       }
