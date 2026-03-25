@@ -138,6 +138,22 @@ body { background: var(--bg); color: var(--ink); font-family: var(--body); font-
 }
 .rpt-footer-logo { color: #e8f2ff; font-family: var(--display); font-size: 11px; font-weight: 700; letter-spacing: 3px; }
 
+/* ── Bore Detail ─────────────────────────────────────────────────────────────── */
+.bd-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; background: var(--rule); margin-bottom: 2px; }
+.bd-table-wrap { background: var(--white); max-height: 420px; overflow-y: auto; }
+.bd-table-wrap::-webkit-scrollbar { width: 3px; }
+.bd-table-wrap::-webkit-scrollbar-track { background: var(--bg); }
+.bd-table-wrap::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+.bd-table-wrap .bore-table tr.bd-active td { background: #eef4fb; box-shadow: inset 3px 0 0 var(--teal); }
+.bd-viz { background: #0c1422; position: relative; min-height: 380px; cursor: grab; user-select: none; }
+.bd-viz:active { cursor: grabbing; }
+.bd-viz canvas { width: 100%; height: 100%; display: block; }
+.bd-viz-lbl { position: absolute; top: 10px; left: 14px; font-family: var(--display); font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #5a8aaa; pointer-events: none; }
+.bd-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; background: var(--rule); margin-top: 2px; }
+.bd-panel { background: #0c1422; position: relative; height: 220px; }
+.bd-panel canvas { width: 100%; height: 100%; display: block; }
+.bd-panel-lbl { position: absolute; top: 8px; left: 12px; font-family: var(--display); font-size: 9px; font-weight: 700; letter-spacing: 2px; color: #5a8aaa; pointer-events: none; }
+
 /* ── Print styles ────────────────────────────────────────────────────────────── */
 @media print {
   @page { margin: 1cm; }
@@ -165,6 +181,9 @@ body { background: var(--bg); color: var(--ink); font-family: var(--body); font-
   .exec-grid { grid-template-columns: repeat(2, 1fr); }
   .plots-grid { grid-template-columns: 1fr; }
   .rpt-status-bar { flex-wrap: wrap; padding: 12px 24px; }
+  .bd-layout { grid-template-columns: 1fr; }
+  .bd-viz { min-height: 300px; }
+  .bd-bottom { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -444,6 +463,39 @@ body { background: var(--bg); color: var(--ink); font-family: var(--body); font-
   </p>
 </div>
 
+<!-- ── Bore Detail: BH-10 ───────────────────────────────────────────────────── -->
+<div class="section" id="bore-detail">
+  <div class="section-label">Bore Detail — BH-10 (Flagged)</div>
+  <h2>Survey Detail: BH-10 &middot; 479 ft TD &middot; 5.8&deg; Max Inclination &middot; <span class="badge flag">FLAG</span></h2>
+  <p style="font-size:11px;color:var(--dim);margin-bottom:20px;">Detailed survey data for the bore with highest observed deviation. Hover any survey station to highlight it on the trajectory views.</p>
+
+  <div class="bd-layout">
+    <div class="bd-table-wrap">
+      <table class="bore-table" id="bh10-table">
+        <thead><tr>
+          <th>MD (ft)</th><th>INC (&deg;)</th><th>AZI (&deg;)</th>
+          <th>TVD (ft)</th><th>N (ft)</th><th>E (ft)</th><th>DLS</th>
+        </tr></thead>
+        <tbody id="bh10-tbody"></tbody>
+      </table>
+    </div>
+    <div class="bd-viz">
+      <canvas id="bh10-3d"></canvas>
+      <div class="bd-viz-lbl">3D TRAJECTORY — DRAG TO ROTATE</div>
+    </div>
+  </div>
+  <div class="bd-bottom">
+    <div class="bd-panel">
+      <canvas id="bh10-plan"></canvas>
+      <div class="bd-panel-lbl">PLAN VIEW (E–N)</div>
+    </div>
+    <div class="bd-panel">
+      <canvas id="bh10-sec"></canvas>
+      <div class="bd-panel-lbl">VERTICAL SECTION (DEPARTURE–TVD)</div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Notice ───────────────────────────────────────────────────────────────── -->
 <div class="section">
   <div class="rpt-note">
@@ -459,6 +511,354 @@ body { background: var(--bg); color: var(--ink); font-family: var(--body); font-
 </div>
 
 </div><!-- /.page -->
+
+<script>
+// ── BH-10 Bore Detail: Survey Calculation & Visualization ─────────────────────
+(function() {
+  const d2r = d => d * Math.PI / 180;
+  const r2d = r => r * 180 / Math.PI;
+
+  // Min-curvature survey calculation
+  function minCurv(raw) {
+    const out = [{...raw[0], tvd:0, north:0, east:0, dls:0}];
+    for (let i = 1; i < raw.length; i++) {
+      const p = out[i-1], c = raw[i], dMD = c.md - p.md;
+      const i1=d2r(p.inc), i2=d2r(c.inc), a1=d2r(p.azi), a2=d2r(c.azi);
+      const cosDL = Math.cos(i2-i1) - Math.sin(i1)*Math.sin(i2)*(1-Math.cos(a2-a1));
+      const dl = Math.acos(Math.max(-1, Math.min(1, cosDL)));
+      const RF = dl < 1e-9 ? 1 : (2/dl)*Math.tan(dl/2);
+      out.push({...c,
+        tvd:   p.tvd   + dMD/2*(Math.cos(i1)+Math.cos(i2))*RF,
+        north: p.north + dMD/2*(Math.sin(i1)*Math.cos(a1)+Math.sin(i2)*Math.cos(a2))*RF,
+        east:  p.east  + dMD/2*(Math.sin(i1)*Math.sin(a1)+Math.sin(i2)*Math.sin(a2))*RF,
+        dls: dMD > 0 ? r2d(dl)/dMD*100 : 0,
+      });
+    }
+    return out;
+  }
+
+  // BH-10: 479ft TD, kick-off ~180ft, building to 5.8° at azimuth 225°
+  const TDMD = 479, KO = 180, MAXINC = 5.8, AZI = 225;
+  const MDS = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 479];
+  const SV = minCurv(MDS.map(md => {
+    if (md <= KO) return {md, inc: 0, azi: 0};
+    const t = (md - KO) / (TDMD - KO);
+    return {md, inc: t * MAXINC, azi: AZI};
+  }));
+  const LAST = SV[SV.length-1];
+  const DEP = Math.sqrt(LAST.north**2 + LAST.east**2);
+
+  // Color: teal-to-red gradient for flagged bore
+  function segClr(md) {
+    if (md <= KO) return '#00897b';
+    const t = (md - KO) / (TDMD - KO);
+    const r = Math.round(0x00 + t * 0xdc), g = Math.round(0x89 + t * (0x26 - 0x89)), b = Math.round(0x7b + t * (0x26 - 0x7b));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // Populate survey table
+  const tbody = document.getElementById('bh10-tbody');
+  SV.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    const maxInc = Math.max(...SV.map(x => x.inc));
+    const isMax = Math.abs(s.inc - maxInc) < 0.01 && s.inc > 0;
+    tr.innerHTML =
+      `<td>${s.md}</td><td>${s.inc.toFixed(2)}${isMax ? ' <span class="badge flag">MAX</span>' : ''}</td>` +
+      `<td>${s.inc < 0.01 ? '\u2014' : s.azi.toFixed(1)}</td><td>${s.tvd.toFixed(1)}</td>` +
+      `<td>${s.north.toFixed(2)}</td><td>${s.east.toFixed(2)}</td>` +
+      `<td>${s.dls > 0 ? s.dls.toFixed(2) : '\u2014'}</td>`;
+    tr.addEventListener('mouseenter', () => { hlIdx = i; setActive(tr); redraw(); });
+    tr.addEventListener('mouseleave', () => { hlIdx = -1; clearActive(); redraw(); });
+    tbody.appendChild(tr);
+  });
+
+  const allRows = [...document.querySelectorAll('#bh10-tbody tr')];
+  function setActive(tr) { allRows.forEach(r => r.classList.remove('bd-active')); tr.classList.add('bd-active'); }
+  function clearActive() { allRows.forEach(r => r.classList.remove('bd-active')); }
+
+  // 3D orbit state
+  let azDeg = -30, elDeg = 25, zoom = 1.0;
+  let dragging = false, dprev = {x:0, y:0};
+  let hlIdx = -1;
+
+  const SCX = LAST.east / 2, SCY = LAST.tvd / 2, SCZ = LAST.north / 2;
+
+  function rotPt(e, tvd, n) {
+    const x = e - SCX, y = -(tvd - SCY), z = n - SCZ;
+    const az = d2r(azDeg), el = d2r(elDeg);
+    const x1 = x*Math.cos(az) + z*Math.sin(az), z1 = -x*Math.sin(az) + z*Math.cos(az);
+    const y2 = y*Math.cos(el) - z1*Math.sin(el), z2 = y*Math.sin(el) + z1*Math.cos(el);
+    return {x: x1, y: y2, z: z2};
+  }
+
+  function proj3(s, W, H, sc) {
+    const {x, y, z} = rotPt(s.east, s.tvd, s.north);
+    const f = 900 / (900 + z * sc * 0.08);
+    return {sx: W/2 + x*sc*zoom*f, sy: H/2 - y*sc*zoom*f};
+  }
+
+  function setupCtx(cv) {
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.offsetWidth || cv.parentElement.offsetWidth || 400;
+    const H = cv.offsetHeight || cv.parentElement.offsetHeight || 300;
+    if (W < 1 || H < 1) return null;
+    cv.width = W * dpr; cv.height = H * dpr;
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return {ctx, W, H};
+  }
+
+  // ── Draw 3D ──
+  function draw3D() {
+    const cv = document.getElementById('bh10-3d');
+    const r = setupCtx(cv); if (!r) return;
+    const {ctx, W, H} = r;
+
+    ctx.fillStyle = '#080d18'; ctx.fillRect(0, 0, W, H);
+    const vig = ctx.createRadialGradient(W/2, H/2, H*.25, W/2, H/2, H*.75);
+    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,.45)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+
+    const sc = (Math.min(W, H) * 0.62) / Math.max(LAST.tvd, 1);
+
+    // Surface grid
+    ctx.lineWidth = .5; ctx.strokeStyle = '#0d1828';
+    for (let g = -3; g <= 3; g++) {
+      const step = 50;
+      let p1 = proj3({east: g*step, tvd: 0, north: -150}, W, H, sc);
+      let p2 = proj3({east: g*step, tvd: 0, north: 150}, W, H, sc);
+      ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
+      p1 = proj3({east: -150, tvd: 0, north: g*step}, W, H, sc);
+      p2 = proj3({east: 150, tvd: 0, north: g*step}, W, H, sc);
+      ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
+    }
+
+    // Axes
+    function axis(e2, tvd2, n2, lbl, clr) {
+      const a = proj3({east:0, tvd:0, north:0}, W, H, sc);
+      const b = proj3({east:e2, tvd:tvd2, north:n2}, W, H, sc);
+      ctx.strokeStyle = clr; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+      const ang = Math.atan2(b.sy-a.sy, b.sx-a.sx);
+      ctx.beginPath();
+      ctx.moveTo(b.sx, b.sy);
+      ctx.lineTo(b.sx - 8*Math.cos(ang-0.4), b.sy - 8*Math.sin(ang-0.4));
+      ctx.lineTo(b.sx - 8*Math.cos(ang+0.4), b.sy - 8*Math.sin(ang+0.4));
+      ctx.closePath(); ctx.fillStyle = clr; ctx.fill();
+      ctx.fillStyle = clr; ctx.font = 'bold 11px Oxanium,sans-serif';
+      ctx.fillText(lbl, b.sx + 6, b.sy + 4);
+    }
+    axis(60, 0, 0, 'E', '#3a7aaa');
+    axis(0, 0, 60, 'N', '#3a7aaa');
+    axis(0, 80, 0, 'TVD', '#3a7aaa');
+
+    // Trajectory
+    ctx.lineWidth = 2;
+    for (let i = 1; i < SV.length; i++) {
+      const a = proj3(SV[i-1], W, H, sc), b = proj3(SV[i], W, H, sc);
+      ctx.strokeStyle = segClr(SV[i].md);
+      ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+    }
+
+    // Station dots
+    for (let i = 0; i < SV.length; i++) {
+      const p = proj3(SV[i], W, H, sc);
+      ctx.fillStyle = segClr(SV[i].md);
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, i === hlIdx ? 5 : 2, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Surface marker
+    const p0 = proj3(SV[0], W, H, sc);
+    ctx.fillStyle = '#00897b'; ctx.beginPath(); ctx.arc(p0.sx, p0.sy, 4, 0, Math.PI*2); ctx.fill();
+
+    // TD label
+    const tp = proj3(LAST, W, H, sc);
+    ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(tp.sx, tp.sy, 6, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#dc2626'; ctx.font = 'bold 10px Share Tech Mono,monospace';
+    ctx.fillText(`TD ${LAST.tvd.toFixed(0)}ft TVD`, tp.sx + 10, tp.sy - 4);
+    ctx.fillText(`DEP ${DEP.toFixed(1)}ft SW`, tp.sx + 10, tp.sy + 10);
+
+    // Highlight
+    if (hlIdx >= 0) {
+      const hp = proj3(SV[hlIdx], W, H, sc);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(hp.sx, hp.sy, 7, 0, Math.PI*2); ctx.stroke();
+    }
+  }
+
+  // ── Draw Plan View ──
+  function drawPlan() {
+    const cv = document.getElementById('bh10-plan');
+    const r = setupCtx(cv); if (!r) return;
+    const {ctx, W, H} = r;
+    ctx.fillStyle = '#080d18'; ctx.fillRect(0, 0, W, H);
+
+    const eAll = SV.map(s => s.east), nAll = SV.map(s => s.north);
+    const eMin = Math.min(...eAll) - 2, eMax = Math.max(...eAll) + 2;
+    const nMin = Math.min(...nAll) - 2, nMax = Math.max(...nAll) + 2;
+    const scE = (W * .78) / Math.max(eMax - eMin, 1), scN = (H * .78) / Math.max(nMax - nMin, 1);
+    const sc = Math.min(scE, scN);
+    const ox = W/2 - ((eMax+eMin)/2)*sc, oy = H/2 + ((nMax+nMin)/2)*sc;
+    const p2s = s => ({sx: ox + s.east*sc, sy: oy - s.north*sc});
+
+    // Grid
+    ctx.strokeStyle = '#0d1828'; ctx.lineWidth = .5;
+    for (let v = Math.ceil(eMin/2)*2; v <= eMax; v += 2) {
+      ctx.beginPath(); ctx.moveTo(ox + v*sc, 0); ctx.lineTo(ox + v*sc, H); ctx.stroke();
+    }
+    for (let v = Math.ceil(nMin/2)*2; v <= nMax; v += 2) {
+      ctx.beginPath(); ctx.moveTo(0, oy - v*sc); ctx.lineTo(W, oy - v*sc); ctx.stroke();
+    }
+
+    // Origin crosshair
+    ctx.strokeStyle = 'rgba(0,137,123,.4)'; ctx.lineWidth = .7;
+    ctx.beginPath(); ctx.moveTo(ox-8, oy); ctx.lineTo(ox+8, oy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox, oy-8); ctx.lineTo(ox, oy+8); ctx.stroke();
+
+    // North arrow
+    ctx.strokeStyle = '#3a7aaa'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(W-18, H-30); ctx.lineTo(W-18, H-46); ctx.stroke();
+    ctx.fillStyle = '#3a7aaa'; ctx.font = 'bold 10px Oxanium,sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('N', W-18, H-49); ctx.textAlign = 'left';
+
+    // Trajectory
+    ctx.lineWidth = 1.5;
+    for (let i = 1; i < SV.length; i++) {
+      const a = p2s(SV[i-1]), b = p2s(SV[i]);
+      ctx.strokeStyle = segClr(SV[i].md);
+      ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+    }
+    for (let i = 0; i < SV.length; i++) {
+      const p = p2s(SV[i]);
+      ctx.fillStyle = segClr(SV[i].md);
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, i === hlIdx ? 4 : 1.5, 0, Math.PI*2); ctx.fill();
+    }
+
+    // TD marker
+    const tp = p2s(LAST);
+    ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(tp.sx, tp.sy, 4, 0, Math.PI*2); ctx.fill();
+
+    // Highlight
+    if (hlIdx >= 0) {
+      const hp = p2s(SV[hlIdx]);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(hp.sx, hp.sy, 5, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // Scale bar
+    const sbFt = 2, sbPx = sbFt * sc;
+    ctx.strokeStyle = '#4a8aaa'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(12, H-12); ctx.lineTo(12 + sbPx, H-12); ctx.stroke();
+    ctx.fillStyle = '#4a8aaa'; ctx.font = '9px Share Tech Mono,monospace';
+    ctx.fillText(`${sbFt}ft`, 14 + sbPx, H-7);
+  }
+
+  // ── Draw Vertical Section ──
+  function drawSec() {
+    const cv = document.getElementById('bh10-sec');
+    const r = setupCtx(cv); if (!r) return;
+    const {ctx, W, H} = r;
+    ctx.fillStyle = '#080d18'; ctx.fillRect(0, 0, W, H);
+
+    const deps = SV.map(s => Math.sqrt(s.north**2 + s.east**2));
+    const depMax = Math.max(...deps) + 1;
+    const tvdMax = LAST.tvd + 20;
+    const ml = 40, mr = 12, mt = 20, mb = 28;
+    const iW = W - ml - mr, iH = H - mt - mb;
+    const scD = iW / Math.max(depMax, 1), scT = iH / Math.max(tvdMax, 1);
+    const p2s = (s, i) => ({sx: ml + deps[i]*scD, sy: mt + s.tvd*scT});
+
+    // Grid
+    ctx.strokeStyle = '#0d1828'; ctx.lineWidth = .5;
+    for (let v = 0; v <= depMax; v += 2) {
+      const x = ml + v*scD;
+      ctx.beginPath(); ctx.moveTo(x, mt); ctx.lineTo(x, H-mb); ctx.stroke();
+      if (v > 0 && v < depMax) {
+        ctx.fillStyle = '#4a7aaa'; ctx.font = '9px Share Tech Mono,monospace';
+        ctx.textAlign = 'center'; ctx.fillText(v.toFixed(0), x, H-mb+11);
+      }
+    }
+    for (let v = 0; v <= tvdMax; v += 100) {
+      const y = mt + v*scT;
+      ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(W-mr, y); ctx.stroke();
+      ctx.fillStyle = '#4a7aaa'; ctx.font = '9px Share Tech Mono,monospace';
+      ctx.textAlign = 'right'; ctx.fillText(v, ml-3, y+3);
+    }
+    ctx.textAlign = 'left';
+
+    // Border
+    ctx.strokeStyle = '#141f35'; ctx.lineWidth = .5;
+    ctx.strokeRect(ml, mt, iW, iH);
+
+    // Axis labels
+    ctx.fillStyle = '#4a8aaa'; ctx.font = 'bold 10px Oxanium,sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('DEPARTURE (ft)', ml + iW/2, H-1);
+    ctx.save(); ctx.translate(10, mt + iH/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText('TVD (ft)', 0, 0); ctx.restore(); ctx.textAlign = 'left';
+
+    // Trajectory
+    ctx.lineWidth = 1.5;
+    for (let i = 1; i < SV.length; i++) {
+      const a = p2s(SV[i-1], i-1), b = p2s(SV[i], i);
+      ctx.strokeStyle = segClr(SV[i].md);
+      ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+    }
+    for (let i = 0; i < SV.length; i++) {
+      const p = p2s(SV[i], i);
+      ctx.fillStyle = segClr(SV[i].md);
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, i === hlIdx ? 4 : 1.5, 0, Math.PI*2); ctx.fill();
+    }
+
+    // TD marker
+    const tp = p2s(LAST, SV.length-1);
+    ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(tp.sx, tp.sy, 5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#dc2626'; ctx.font = '9px Share Tech Mono,monospace';
+    ctx.fillText(`TD ${LAST.tvd.toFixed(0)}ft`, tp.sx + 8, tp.sy + 3);
+
+    // Highlight
+    if (hlIdx >= 0) {
+      const hp = p2s(SV[hlIdx], hlIdx);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(hp.sx, hp.sy, 5, 0, Math.PI*2); ctx.stroke();
+    }
+  }
+
+  function redraw() { draw3D(); drawPlan(); drawSec(); }
+
+  // ── Mouse orbit on 3D canvas ──
+  const cv3 = document.getElementById('bh10-3d');
+  cv3.addEventListener('mousedown', e => { dragging = true; dprev = {x: e.clientX, y: e.clientY}; e.preventDefault(); });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    azDeg += (e.clientX - dprev.x) * .45;
+    elDeg = Math.max(-85, Math.min(85, elDeg + (e.clientY - dprev.y) * .3));
+    dprev = {x: e.clientX, y: e.clientY};
+    draw3D();
+  });
+  window.addEventListener('mouseup', () => dragging = false);
+  cv3.addEventListener('wheel', e => {
+    zoom = Math.max(.3, Math.min(5, zoom * (e.deltaY > 0 ? .91 : 1.10)));
+    e.preventDefault(); draw3D();
+  }, {passive: false});
+
+  // Touch orbit
+  let tp0 = null;
+  cv3.addEventListener('touchstart', e => { if (e.touches.length === 1) { tp0 = {x: e.touches[0].clientX, y: e.touches[0].clientY}; e.preventDefault(); } }, {passive: false});
+  cv3.addEventListener('touchmove', e => {
+    if (e.touches.length === 1 && tp0) {
+      azDeg += (e.touches[0].clientX - tp0.x) * .45;
+      elDeg = Math.max(-85, Math.min(85, elDeg + (e.touches[0].clientY - tp0.y) * .3));
+      tp0 = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+      draw3D();
+      e.preventDefault();
+    }
+  }, {passive: false});
+
+  // Initial draw + resize
+  redraw();
+  window.addEventListener('resize', redraw);
+})();
+</script>
 
 </body>
 </html>
