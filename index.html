@@ -915,10 +915,12 @@ function statusColor(s) { return s==='pass'?'#00d4aa':s==='warn'?'#f59e0b':'#ef4
         success.querySelector('h3').textContent = '\u2713 Request received.';
         success.querySelector('p').textContent = "Thanks! We\u2019ll be in touch within 24 hours.";
       } else {
+        console.error('Supabase insert error:', JSON.stringify(error));
         btn.textContent = 'Something went wrong \u2014 Try Again';
         btn.disabled = false;
       }
-    } catch {
+    } catch(err) {
+      console.error('Form submit error:', err);
       btn.textContent = 'Something went wrong \u2014 Try Again';
       btn.disabled = false;
     }
